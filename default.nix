@@ -25,8 +25,6 @@ in stdenv.mkDerivation {
     haskellPackages.pandoc-crossref
   ];
 
-  # phases = [ "buildPhase" "installPhase" ];
-
   installPhase = ''
     mkdir $out
     cp medical-imaging-nix.pdf $out
