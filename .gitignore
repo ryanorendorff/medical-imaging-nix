@@ -1,4 +1,8 @@
 result*
+
+# Ignore PDFs on the top level but allow them in figs
+*.pdf
+
 # Created by https://www.gitignore.io/api/vim,emacs
 # Edit at https://www.gitignore.io/?templates=vim,emacs
 
