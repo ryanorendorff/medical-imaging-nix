@@ -10,3 +10,5 @@ devices that have unusual or outdated software dependencies. In this talk we
 will discuss how Nix and NixOS assists in making a reproducible environment
 for our software, the benefits gained by this method, and some of the
 challenges encountered along the way.
+
+[Download the presentation PDF here](https://github.com/ryanorendorff/medical-imaging-nix/blob/gh-pages/medical-imaging-nix.pdf)
