@@ -12,3 +12,9 @@ for our software, the benefits gained by this method, and some of the
 challenges encountered along the way.
 
 [Download the presentation PDF here](https://github.com/ryanorendorff/medical-imaging-nix/raw/gh-pages/medical-imaging-nix.pdf)
+
+
+Example Nix files
+-----------------
+
+Examples from the presentation can be found in the `src/nix` folder.
