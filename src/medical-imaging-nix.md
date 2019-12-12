@@ -19,6 +19,8 @@ Overview of the talk
 - How to set up systems with tons of dependencies like MPI.
 - What worked well, what did not work as well.
 
+Disclaimer: The Nix work was done at Magnetic Insight, my employer.
+
 
 Magnetic Particle Imaging: Detecting Iron Nanoparticles using Magnetic Fields
 =============================================================================
@@ -29,7 +31,31 @@ MPI detects iron in the blood
 Magnetic Particle Imaging (MPI) is an emerging medical imaging technology that
 images iron particle distribution in a body.\
 
-![Left: MPI Hardware. Right: Image of rat cerebral circulation. Courtesy Conolly Lab, UC Berkeley](fig/mpi.png)
+![Left: MPI Hardware. Right: Can you guess? Courtesy Conolly Lab, UC Berkeley](fig/mpi.png)
+
+
+MPI is all about moving around a gradient magnetic field
+--------------------------------------------------------
+
+In MPI, we move around a magnetic field to detect where an iron sample is.
+
+![](fig/gradient-zero.pdf){width=420px}
+
+
+MPI is all about moving around a gradient magnetic field
+--------------------------------------------------------
+
+In MPI, we move around a magnetic field to detect where an iron sample is.
+
+![](fig/gradient-balanced.pdf){width=420px}
+
+
+MPI is all about moving around a gradient magnetic field
+--------------------------------------------------------
+
+In MPI, we move around a magnetic field to detect where an iron sample is.
+
+![](fig/gradient-unbalanced.pdf){width=420px}
 
 
 Components used in MPI systems
@@ -75,7 +101,8 @@ some challenges.
 - Creating the same setup twice is hard.
 - Creating the same setup _over time_ is very hard.
 - Windows likes to update itself.
-- Upgrading/servicing devices in the field detailed knowledge of the changes.
+- Upgrading/servicing devices in the field detailed knowledge of the changes
+  being applied.
 
 :::
 
@@ -100,7 +127,20 @@ We used NixOS to pin down a bunch of our software stack
 We decided to convert the main machine to NixOS. Let's go through each block
 in turn! What can we *learn* from each subsystem?
 
-![System layout. Items in blue box are located on NixOS machine; items in orange box are connected by networking](fig/system-diagram-nixos.pdf){width=420px}
+![](fig/system-diagram-nixos.pdf){width=420px}
+
+
+::: notes
+
+Need to cover
+
+- Python
+- Rust
+- Service Programs
+- Safety Daemons
+- Aux devices
+
+:::
 
 
 
@@ -173,9 +213,18 @@ On the less convenient side:
 
 . . .
 
-*Lesson:* the basics for Rust work but you may need to use some tooling
-(like `cargo2nix`) to make a robust answer.
+*Lesson:* the basics for Rust work but you want to use some tooling
+(like `cargo2nix`, bazel) to reduce build times.
 
+
+
+
+How to package proprietary drivers
+----------------------------------
+
+. . .
+
+Don't. It can be quite difficult.
 
 
 How to package proprietary drivers
