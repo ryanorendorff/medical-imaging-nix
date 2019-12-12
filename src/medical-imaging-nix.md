@@ -40,13 +40,9 @@ acquire an image.
 
 ::: incremental
 
-- Acquisition devices (DAQs), to convert our input/output signals to digital form.
-- Custom electronics with custom firmware.
-- A Real-Time OS for correct timing.
-- Motors to move the sample.
-- Auxillary devices connected via ethernet.
+- Auxillary devices (DAQs, custom electronics, motors, safety systems)
 - GPUs.
-- Hardware and software safety systems/daemons.
+- Software safety systems/daemons.
 - Service level access to debug information/tools.
 
 :::
@@ -59,7 +55,13 @@ Pinning all this down can be hard!
 System Diagram of what is required
 ----------------------------------
 
-PUT A FIGURE HERE!
+![System layout. Items in blue box are located on NixOS machine; items in orange box are connected by networking](fig/system-diagram.pdf){width=420px}
+
+
+And all the connections!
+------------------------
+
+![System layout. Items in blue box are located on NixOS machine; items in orange box are connected by networking. Pink is a dependency](fig/system-diagram-connections.pdf){width=420px}
 
 
 Prior challenges faced
@@ -71,14 +73,9 @@ some challenges.
 ::: incremental
 
 - Creating the same setup twice is hard.
-  - Easy for one developer to have different system level packages.
 - Creating the same setup _over time_ is very hard.
-  - Old files/packages can disappear from the internet, information lost
-    between developers, etc.
 - Windows likes to update itself.
-  - Can cause driver issues, API issues, dependency issues, etc.
 - Upgrading/servicing devices in the field detailed knowledge of the changes.
-  - System level state is not easily tracked.
 
 :::
 
@@ -93,44 +90,172 @@ To solve our pain points, we defined the following requirements.
 - Well defined system state, both for our software and the OS.
 
 
-NixOS to the rescue! (mostly)
-=============================
+NixOS to the rescue!
+====================
 
 
 We used NixOS to pin down a bunch of our software stack
 -------------------------------------------------------
 
-PUT FIGURE HERE! Maybe of the same diagram but showing where Nix is involved?
+We decided to convert the main machine to NixOS. Let's go through each block
+in turn! What can we *learn* from each subsystem?
 
-In this section we are going to tackle how each component was "nixified".
-
-
-How to package python environment
----------------------------------
-
-Include example of a package that is not defined in the nixpkgs repository.
-
-Describe how Python presents interesting challenges because system level
-packages are not always defined in the setup.py file.
+![System layout. Items in blue box are located on NixOS machine; items in orange box are connected by networking](fig/system-diagram-nixos.pdf){width=420px}
 
 
-How to package GUI programs
----------------------------
 
-Example: 3DSlicer
+Packaging the main environment: Python Advantages
+---------------------------------------
 
+Python has some interesting packaging challenges. System libraries are not often specified by dependency system.
 
-How to package developer tools
-------------------------------
-
-Use chroot to simulate where things should go.
-Use a Windows VM
+. . .
 
 
-How to package system daemons
------------------------------
+```{ .nix}
+stdenv.mkDerivation {
+  ...
+  buildInputs = pkgs.python37.withPackages (p: with p; [
+    numpy
+    scipy
+    pyfftw
+  ]);
+  propagatedBuildInputs = [ pkgs.fftw ];
+}
+```
 
-Adding a system service works.
+
+Packaging the main environment: Python Challenges
+-------------------------------------------------
+
+If nixpkgs does not have your desired python package, it can be included
+easily using an overlay. Here we 
+
+```{.nix}
+python37.override {
+  packageOverrides = (self: super: 
+    coloredlogs = self.buildPythonPackage {...};
+  )
+}
+```
+
+. . .
+
+But!
+
+- You may need to wrap a bunch of other python dependencies.
+- You may need to do some manual dependency resolution (instead of `pip`).
+
+. . .
+
+*Lesson:* python support is good but you may spend quite a bit of time
+defining dependencies.
+
+
+Packaging the main environment: Rust
+------------------------------------
+
+Rust is pretty simple to package, just use `buildRustCrate` or
+`buildRustPackage`. These functions allow you to conveniently package
+anything that has a `Cargo.lock` file.
+
+. . .
+
+On the less convenient side:
+
+::: incremental
+
+- until recently it was hard to pin down a particular version of the Rust compiler. (Solved by mozilla overlay change in 2019)
+- Since we use `cargo` in one big derivation, any changes requires a
+  complete rebuild. Can be solved with `cargo2nix`.
+  
+:::
+
+. . .
+
+*Lesson:* the basics for Rust work but you may need to use some tooling
+(like `cargo2nix`) to make a robust answer.
+
+
+
+How to package proprietary drivers
+----------------------------------
+
+Proprietary drivers may rely on a certain file structure (FHS). For
+example, the driver may assume `/usr/local/lib` exists.
+
+. . .
+
+To get around this, you can bootstrap a chroot environment using the
+building blocks of `buildFHSUserEnv`.
+
+
+```{.nix}
+let
+  pkgs = import <nixpkgs> {};
+  chrootenv = pkgs.callPackage (pkgs.path +
+    "/pkgs/build-support/build-fhs-userenv/chrootenv/")
+    {};
+in 
+  # can now use the chrootenv binary.
+```
+
+. . .
+
+*Lesson:* FHS assumptions are common in software; you may need to roll your
+own solutions/do a lot of patching.
+
+
+How to package UI user programs
+-------------------------------
+
+We ship with certain programs for image analysis (3D Slicer). Often these
+assume standard FHS places to load libraries.
+
+. . .
+
+The trick for these is to 
+
+::: incremental
+
+- Use `buildFHSUserEnv` to make a fake FHS environment.
+- Use programs like `ldd` and `strace` to find program dependencies.
+  - Programs do not always specify all their dependencies correctly in their
+    READMEs/package management systems! :-(
+- Look at other GUI programs in nixpkgs for guidance, but you'll need to
+  look at the nix expressions directly.
+
+:::
+
+. . .
+
+*Lesson:* patterns in nixpkgs are a primary way of solving a problem.
+
+
+How to package service/hardware programs
+----------------------------------------
+
+Programs for hardware are often only for Windows. In these cases, NixOS has
+great virtualbox support. You can enable it with the following flag in your
+`configuration.nix` file (or equivalent).
+
+```
+virtualisation.virtualbox.host.enable = true;
+```
+
+. . .
+
+Some packages have such extensive requirements that a decent patch/first
+step is getting the program running under docker.
+
+```
+virtualisation.docker.enable = true;
+```
+
+. . .
+
+*Lesson:* You won't always succeed in the attempts to package things in a
+timely manner. But there are escape hatches.
 
 
 How to pin the whole system
@@ -138,52 +263,74 @@ How to pin the whole system
 
 Pin using the method Gabriel mentions.
 
+. . .
+
+*Lesson:* 
+
+
+How to package system daemons
+-----------------------------
+
+a
+
+. . . 
+
+*Lesson:* After pinning a configuration, it is relatively painless to define
+a daemon.
+
 
 Lessons Learned
 ===============
 
 
-Lessons learned the hard way
-----------------------------
+Lessons learned summary
+-----------------------
 
 We found out a few things the hard way.
 
 ::: incremental
 
-- Don't trust that a repository will not switch out a file with one of the
-  same name.
-- Wrapping up proprietary code is difficult. Best avoided if possible.
-- Defining the setup takes longer than on other systems (Ubuntu, Windows, etc).
-  - This can be thought of as an "up front cost".
+- It is easy to spend a lot of time on packaging something when it is not
+  defined in nixpkgs.
+- Software is not always forthcoming with all of its assumptions on the
+  system state.
+- Some code (especially proprietary) is too hard to wrap. You can use
+  docker/virtualbox as escape hatches to work on your main goal.
+- You will have a great understanding of your dependencies; those
+  dependencies will be documented in the process of becoming nix
+  expressions.
 
 :::
 
 
-Advantages gained by NixOS
---------------------------
+Did we reach our goals through this process?
+--------------------------------------------
 
-We gained quite a bit by going to NixOS.
+Did we reach the goals we had before?
 
-- Simple and robust deployments.
-- Easier field service.
-- Easier setup for developers.
-- A text file completely defines the state of the system.
+::: incremental
+
+- An easy deployment strategy that any developer/field technician can run. $\checkmark$
+- No knowledge of the system version changes required. $\checkmark$
+- Well defined system state, both for our software and the OS. $\checkmark$
+
+:::
 
 
-Advantages of the old method
-----------------------------
+<!-- Advantages of the old method -->
+<!-- ---------------------------- -->
 
-The old Windows setup had some advantages over the new NixOS setup.
+<!-- The old Windows setup had some advantages over the new NixOS setup. -->
 
-- Getting developers on board was easier.
-- Faster to get to a working state.
-  - Developers can spend non-trivial time setting up a nix expression before
-    they can start their work.
-- Better support for almost everything (drivers, etc)
-- Nixpkgs/NixOS documentation is both underwhelming and overwhelming.
+<!-- - Getting developers on board was easier. -->
+<!-- - Faster to get to a working state. -->
+<!--   - Developers can spend non-trivial time setting up a nix expression before -->
+<!--     they can start their work. -->
+<!-- - Better support for almost everything (drivers, etc) -->
+<!-- - Nixpkgs/NixOS documentation is both underwhelming and overwhelming. -->
 
 
 Questions?
 ----------
 
-![](fig/question.jpg)
+![](fig/question.jpg){.center}
