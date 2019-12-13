@@ -339,11 +339,26 @@ timely manner. But there are escape hatches.
 How to pin the whole system
 ---------------------------
 
-Pin using the method Gabriel mentions.
+Pin using the method Gabriel mentions. http://www.haskellforall.com/2018/08/nixos-in-production.html
 
 . . .
 
-*Lesson:* 
+```
+let
+  nixpkgs-src = builtins.fetchTarball { ... };
+in import "${nixpkgs-src}/nixos" {
+  system = "x86_64-linux";
+  configuration = import ./configuration.nix;
+}
+
+```
+
+. . .
+
+*Lesson:* Pinning the whole system make deployment wasy and help identify
+missing dependencies.
+
+Pro tip: Use `nix-diff` to determine the difference between two systems!
 
 
 How to package services: the hard times
@@ -356,14 +371,14 @@ your `configuration.nix`
 ```
 let
 
-  cfg = config.services.vncservice;
+  cfg = config.services.vnc;
 
 in {
 
-  options.services.vncservice.enable = mkEnableOption "vncservice";
-  options.services.vncservice.port = mkOption { ... };
+  options.services.vnc.enable = mkEnableOption "vncservice";
+  options.services.vnc.port = mkOption { ... };
 
-  config = mkIf (cfg.enable) {systemd.services.vncserver = {...};};
+  config = mkIf (cfg.enable) {systemd.services.vnc = {...};};
 ```
 
 . . .
