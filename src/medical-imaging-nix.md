@@ -280,9 +280,38 @@ The trick for these is to
 
 *Lesson:* patterns in nixpkgs are a primary way of solving a problem.
 
+. . .
+
+*Lesson:* you can apply patches before they are in the main code.
+
 
 How to package service/hardware programs
 ----------------------------------------
+
+These often come as debian/RPM packages. You'll can patch binaries
+to use `/nix/store` paths of the libraries the package requests.
+
+. . .
+
+```
+stdenv.mkDerivation rec {
+  src = ./something.deb;
+  nativeBuildInputs = [ dpkg ]; unpackPhase = "dpkg -x $src .";
+
+  preFixup = let libPath = lib.makeLibraryPath [ stdenv.cc.cc.lib ];
+  in ''for f in $out/lib/lib* ; do
+         patchelf --set-rpath "${libPath}:$out/lib" $f
+       done'';}
+```
+
+. . .
+
+*Lesson:* Handling packages from other package managers is not too bad;
+dependency management is manual.
+
+
+How to package service/hardware programs: the hard times
+--------------------------------------------------------
 
 Programs for hardware are often only for Windows. In these cases, NixOS has
 great virtualbox support. You can enable it with the following flag in your
@@ -317,15 +346,30 @@ Pin using the method Gabriel mentions.
 *Lesson:* 
 
 
-How to package system daemons
------------------------------
+How to package services: the hard times
+--------------------------------------------------------
 
-a
+Packaging up service is pretty simple. Just import a file like this into
+your `configuration.nix`
 
-. . . 
 
-*Lesson:* After pinning a configuration, it is relatively painless to define
-a daemon.
+```
+let
+
+  cfg = config.services.vncservice;
+
+in {
+
+  options.services.vncservice.enable = mkEnableOption "vncservice";
+  options.services.vncservice.port = mkOption { ... };
+
+  config = mkIf (cfg.enable) {systemd.services.vncserver = {...};};
+```
+
+. . .
+
+*Lesson:* After defining a package, it is relatively painless to define a
+daemon.
 
 
 Lessons Learned
