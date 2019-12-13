@@ -207,14 +207,9 @@ anything that has a `Cargo.lock` file.
 
 On the less convenient side:
 
-::: incremental
-
-- until recently it was hard to pin down a particular version of the Rust compiler. (Solved by mozilla overlay change in 2019)
-- Since we use `cargo` in one big derivation, any changes requires a
-  complete rebuild. Can be solved with `cargo2nix`.
+Since we use `cargo` in one big derivation, any changes requires a complete
+rebuild. Can be solved with `cargo2nix`.
   
-:::
-
 . . .
 
 *Lesson:* the basics for Rust work but you want to use some tooling
@@ -250,7 +245,7 @@ let
     "/pkgs/build-support/build-fhs-userenv/chrootenv/")
     {};
 in 
-  # can now use the chrootenv binary.
+  # can now use the ${chrootenv}/bin/chrootenv binary.
 ```
 
 . . .
@@ -293,7 +288,7 @@ How to package service/hardware programs
 ----------------------------------------
 
 These often come as debian/RPM packages. You'll can patch binaries
-to use `/nix/store` paths of the libraries the package requests.
+to use `/nix/store` paths for library dependencies.
 
 . . .
 
@@ -302,7 +297,8 @@ stdenv.mkDerivation rec {
   src = ./something.deb; nativeBuildInputs = [ dpkg ];
   unpackPhase = "dpkg -x $src .";
 
-  preFixup = let libPath = lib.makeLibraryPath [ stdenv.cc.cc.lib ];
+  preFixup = let
+    libPath = lib.makeLibraryPath [ stdenv.cc.cc.lib ];
   in ''for f in $out/lib/lib* ; do
          patchelf --set-rpath "${libPath}:$out/lib" $f
        done'';}
@@ -365,8 +361,8 @@ missing dependencies.
 Pro tip: Use `nix-diff` to determine the difference between two systems!
 
 
-How to package services: the hard times
---------------------------------------------------------
+How to package services
+-----------------------
 
 Packaging up service is pretty simple. Just import a file like this into
 your `configuration.nix`
@@ -397,13 +393,13 @@ Deployment is pretty simple after these changes.
 
 1. Define a system configuration with everything needed.
 2. Build that system using `nix-build`
-3. Copy to a remove system using `nix-copy-closure`
-4. Run `switch-to-configuratio` to change the system over to the new state.
+3. Copy to a remote system using `nix-copy-closure`
+4. Run `switch-to-configuration` to change the system over to the new state.
 
 . . .
 
 This method also gives us the flexibility to copy the closure onto a USB device
-and then copy onto the remote system.
+and then copy that onto a remote system.
 
 . . .
 
