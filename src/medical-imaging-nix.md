@@ -66,7 +66,7 @@ acquire an image.
 
 ::: incremental
 
-- Auxillary devices (DAQs, custom electronics, motors, safety systems)
+- Auxillary devices (DAQs, custom electronics, motors, safety systems).
 - GPUs.
 - Software safety systems/daemons.
 - Service level access to debug information/tools.
@@ -183,8 +183,12 @@ python37.override {
 
 But!
 
+::: incremental
+
 - You may need to wrap a bunch of other python dependencies.
 - You may need to do some manual dependency resolution (instead of `pip`).
+
+:::
 
 . . .
 
@@ -295,8 +299,8 @@ to use `/nix/store` paths of the libraries the package requests.
 
 ```
 stdenv.mkDerivation rec {
-  src = ./something.deb;
-  nativeBuildInputs = [ dpkg ]; unpackPhase = "dpkg -x $src .";
+  src = ./something.deb; nativeBuildInputs = [ dpkg ];
+  unpackPhase = "dpkg -x $src .";
 
   preFixup = let libPath = lib.makeLibraryPath [ stdenv.cc.cc.lib ];
   in ''for f in $out/lib/lib* ; do
@@ -367,7 +371,6 @@ How to package services: the hard times
 Packaging up service is pretty simple. Just import a file like this into
 your `configuration.nix`
 
-
 ```
 let
 
@@ -375,7 +378,7 @@ let
 
 in {
 
-  options.services.vnc.enable = mkEnableOption "vncservice";
+  options.services.vnc.enable = mkEnableOption "vnc";
   options.services.vnc.port = mkOption { ... };
 
   config = mkIf (cfg.enable) {systemd.services.vnc = {...};};
@@ -385,6 +388,26 @@ in {
 
 *Lesson:* After defining a package, it is relatively painless to define a
 daemon.
+
+
+Deployment strategy
+-------------------
+
+Deployment is pretty simple after these changes.
+
+1. Define a system configuration with everything needed.
+2. Build that system using `nix-build`
+3. Copy to a remove system using `nix-copy-closure`
+4. Run `switch-to-configuratio` to change the system over to the new state.
+
+. . .
+
+This method also gives us the flexibility to copy the closure onto a USB device
+and then copy onto the remote system.
+
+. . .
+
+*Lesson:* Anyone can do deployment with a few commands that can be scripted.
 
 
 Lessons Learned
@@ -399,12 +422,12 @@ We found out a few things the hard way.
 ::: incremental
 
 - It is easy to spend a lot of time on packaging something when it is not
-  defined in nixpkgs.
+  defined in nixpkgs. But you get a reproducible build for your work!
 - Software is not always forthcoming with all of its assumptions on the
   system state.
 - Some code (especially proprietary) is too hard to wrap. You can use
   docker/virtualbox as escape hatches to work on your main goal.
-- You will have a great understanding of your dependencies; those
+- You will end up a great understanding of your dependencies; those
   dependencies will be documented in the process of becoming nix
   expressions.
 
@@ -418,9 +441,24 @@ Did we reach the goals we had before?
 
 ::: incremental
 
-- An easy deployment strategy that any developer/field technician can run. $\checkmark$
+- An easy deployment strategy that any developer/field technician can run.
+  $\checkmark$
 - No knowledge of the system version changes required. $\checkmark$
-- Well defined system state, both for our software and the OS. $\checkmark$
+- Well defined system state. $\checkmark$
+
+:::
+
+
+What do our developers think of Nix/NixOS?
+------------------------------------------
+
+How well has the Nix transition worked for our developers?
+
+::: incremental
+
+- They love the reproducibility.
+- They are able to get set up with the software quickly.
+- We will need training to get people to make their own nix expressions.
 
 :::
 
@@ -441,4 +479,4 @@ Did we reach the goals we had before?
 Questions?
 ----------
 
-![](fig/question.jpg){.center}
+![](fig/question.jpg){width=60%}
